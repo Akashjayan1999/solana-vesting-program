@@ -5,66 +5,26 @@ use anchor_lang::prelude::*;
 declare_id!("Count3AcZucFDPSFBAeHkQ6AvttieKUkyJ8HiQGhQwe");
 
 #[program]
-pub mod counter {
+pub mod vesting {
     use super::*;
 
-    pub fn close(_ctx: Context<CloseCounter>) -> Result<()> {
+    pub fn create_vesting_account(ctx: Context<CreateVestingAccount>, amount: u64) -> Result<()> {
+        let vesting_account = &mut ctx.accounts.vesting_account;
+        vesting_account.amount = amount;
+        vesting_account.start_time = ctx.accounts.clock.unix_timestamp;
+        vesting_account.end_time = vesting_account.start_time + vesting_account.duration;
         Ok(())
     }
-
-    pub fn decrement(ctx: Context<Update>) -> Result<()> {
-        ctx.accounts.counter.count = ctx.accounts.counter.count.checked_sub(1).unwrap();
-        Ok(())
-    }
-
-    pub fn increment(ctx: Context<Update>) -> Result<()> {
-        ctx.accounts.counter.count = ctx.accounts.counter.count.checked_add(1).unwrap();
-        Ok(())
-    }
-
-    pub fn initialize(_ctx: Context<InitializeCounter>) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn set(ctx: Context<Update>, value: u8) -> Result<()> {
-        ctx.accounts.counter.count = value.clone();
-        Ok(())
-    }
+   
 }
 
 #[derive(Accounts)]
-pub struct InitializeCounter<'info> {
-    #[account(mut)]
-    pub payer: Signer<'info>,
+pub struct CreateVestingAccount<'info> {
+#[account(mut)]
+pub signer : Signer<'info>,
 
-    #[account(
-  init,
-  space = 8 + Counter::INIT_SPACE,
-  payer = payer
-    )]
-    pub counter: Account<'info, Counter>,
-    pub system_program: Program<'info, System>,
-}
-#[derive(Accounts)]
-pub struct CloseCounter<'info> {
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
-    #[account(
-  mut,
-  close = payer, // close account and return lamports to payer
-    )]
-    pub counter: Account<'info, Counter>,
+#[account(init, 
+    payer = signer,
+    space = 8 + INIT_)]
 }
 
-#[derive(Accounts)]
-pub struct Update<'info> {
-    #[account(mut)]
-    pub counter: Account<'info, Counter>,
-}
-
-#[account]
-#[derive(InitSpace)]
-pub struct Counter {
-    count: u8,
-}
