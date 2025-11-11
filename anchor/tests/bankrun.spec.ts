@@ -1,13 +1,14 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from '@solana/web3.js'
-import { BankrunProvider, startAnchor } from 'anchor-bankrun'
+import { BankrunProvider,startAnchor  } from 'anchor-bankrun'
 import IDL from '../target/idl/vesting.json'
 import { Vesting } from '../target/types/vesting'
-import { BanksClient, ProgramTestContext } from 'solana-bankrun'
+import { BanksClient, Clock, ProgramTestContext } from 'solana-bankrun'
 import { SYSTEM_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/native/system'
 import { createMint, mintTo } from 'spl-token-bankrun'
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet'
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 describe('vesting smart contract test', () => {
   const companyName = "Company";
   let beneficiary: Keypair
@@ -77,7 +78,87 @@ describe('vesting smart contract test', () => {
     
   })
 
-  it('is initialized!', () => {
-    expect(true).toBe(true)
-  })
-})
+   it("should create a vesting account", async () => {
+    const tx = await program.methods
+      .createVestingAccount(companyName)
+      .accounts({
+        signer: employer.publicKey,
+        mint,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc({ commitment: "confirmed" });
+
+    const vestingAccountData = await program.account.vestingAccount.fetch(
+      vestingAccountKey,
+      "confirmed"
+    );
+    console.log(
+      "Vesting Account Data:",
+      JSON.stringify(vestingAccountData, null, 2)
+    );
+
+    console.log("Create Vesting Account Transaction Signature:", tx);
+  });
+
+
+   it("should fund the treasury token account", async () => {
+    const amount = 10_000 * 10 ** 9;
+    const mintTx = await mintTo(
+      // @ts-ignores
+      banksClient,
+      employer,
+      mint,
+      treasuryTokenAccount,
+      employer,
+      amount
+    );
+
+    console.log("Mint to Treasury Transaction Signature:", mintTx);
+  });
+
+
+  it("should create an employee vesting account", async () => {
+    const tx2 = await program.methods
+      .createEmployeeVesting(new anchor.BN(0), new anchor.BN(100), new anchor.BN(100), new anchor.BN(0))
+      .accounts({
+        beneficiary: beneficiary.publicKey,
+        vestingAccount: vestingAccountKey,
+         
+       
+      })
+      .rpc({ commitment: "confirmed", skipPreflight: true });
+
+    console.log("Create Employee Account Transaction Signature:", tx2);
+    console.log("Employee account", employeeAccount.toBase58());
+  });
+
+
+  it("should claim tokens", async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const currentClock = await banksClient.getClock();
+    context.setClock(
+      new Clock(
+        currentClock.slot,
+        currentClock.epochStartTimestamp,
+        currentClock.epoch,
+        currentClock.leaderScheduleEpoch,
+        1000n
+      )
+    );
+
+    console.log("Employee account", employeeAccount.toBase58());
+
+    const tx3 = await program2.methods
+      .claimTokens(companyName)
+      .accounts({
+        // @ts-ignores
+        beneficiary: beneficiary.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc({ commitment: "confirmed" });
+
+    console.log("Claim Tokens transaction signature", tx3);
+  });
+});
+

@@ -145,8 +145,9 @@ pub struct CreateEmployeeAccount<'info> {
     pub beneficiary: SystemAccount<'info>,
     #[account( 
         has_one = owner,
-        seeds = [vesting_account.company_name.as_bytes()], // derive PDA from stored company_name
-        bump = vesting_account.bump)]
+        // seeds = [vesting_account.company_name.as_bytes()], // derive PDA from stored company_name
+        // bump = vesting_account.bump
+        )]
     pub vesting_account: Account<'info, VestingAccount>,
     #[account(
         init,
@@ -183,7 +184,13 @@ pub struct ClaimTokens<'info> {
     )]
     pub vesting_account: Account<'info, VestingAccount>,
     pub mint: InterfaceAccount<'info, Mint>,
-    #[account(mut)]
+    #[account(
+    mut,
+    token::mint = mint,
+    token::authority = treasury_token_account,
+    seeds = [b"vesting_treasury", company_name.as_bytes()],
+    bump = vesting_account.treasury_bump,
+)]
     pub treasury_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         init_if_needed,
