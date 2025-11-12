@@ -198,7 +198,7 @@ pub struct ClaimTokens<'info> {
         associated_token::mint = mint,
         associated_token::authority = beneficiary,
         associated_token::token_program = token_program
-    )]
+    )] 
     pub employee_token_account: InterfaceAccount<'info, TokenAccount>,
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
